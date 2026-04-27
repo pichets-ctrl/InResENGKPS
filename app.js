@@ -205,11 +205,11 @@ function processData() {
       const internal = bic ? toNum(row[bic]) : 0;
       const external = bec ? toNum(row[bec]) : 0;
 
-      // Total budget: prefer explicit total column, else sum internal+external
-      if (bc) {
-        row['__budget_num'] = toNum(row[bc]);
-      } else if (bic || bec) {
+      // Always sum internal + external when either column exists
+      if (bic || bec) {
         row['__budget_num'] = internal + external;
+      } else if (bc) {
+        row['__budget_num'] = toNum(row[bc]);
       } else {
         row['__budget_num'] = 0;
       }
