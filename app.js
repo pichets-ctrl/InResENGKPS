@@ -78,6 +78,11 @@ function detectColumns(headers) {
 }
 
 // ── Excel / CSV loading ─────────────────────────────────────
+// Layout: row 1-2 = title/meta, row 3 = headers, row 4+ = data
+const TARGET_SHEET  = 'โครงการวิจัย';
+const HEADER_ROW    = 3;  // 1-based Excel row number for headers
+const DATA_ROW_START = 4; // 1-based Excel row number where data begins
+
 function loadData(file) {
   showLoading('กำลังอ่านไฟล์ Excel...');
   const reader = new FileReader();
@@ -86,26 +91,51 @@ function loadData(file) {
       const data = new Uint8Array(e.target.result);
       const wb   = XLSX.read(data, { type: 'array', cellDates: true });
 
-      // Try sheet "โครงการวิจัย" first, fallback to first sheet
-      const targetSheet = 'โครงการวิจัย';
-      const sheetName   = wb.SheetNames.includes(targetSheet)
-        ? targetSheet
-        : wb.SheetNames[0];
-
-      $('loadingMsg').textContent = `อ่าน sheet: ${sheetName}`;
-
-      const ws   = wb.Sheets[sheetName];
-      const json = XLSX.utils.sheet_to_json(ws, { defval: '' });
-
-      if (!json.length) {
+      // Must use sheet "โครงการวิจัย" — no fallback
+      if (!wb.SheetNames.includes(TARGET_SHEET)) {
         hideLoading();
-        alert('ไม่พบข้อมูลในไฟล์ หรือ sheet ว่างเปล่า');
+        const found = wb.SheetNames.join(', ');
+        alert(`ไม่พบ sheet "${TARGET_SHEET}" ในไฟล์นี้\nSheet ที่พบ: ${found}`);
         return;
       }
 
+      $('loadingMsg').textContent = `อ่าน sheet: ${TARGET_SHEET}`;
+
+      const ws = wb.Sheets[TARGET_SHEET];
+
+      // Read all rows as raw arrays (no header inference)
+      const allRows = XLSX.utils.sheet_to_json(ws, { header: 1, defval: '' });
+
+      // Row 3 (index 2) = headers; skip empty header cells
+      const rawHeaders = allRows[HEADER_ROW - 1] || [];
+      const headers = rawHeaders.map((h, i) =>
+        (h !== null && h !== undefined && String(h).trim() !== '')
+          ? String(h).trim()
+          : `คอลัมน์_${i + 1}`
+      );
+
+      // Rows from row 4 (index 3) onward = data
+      // Skip rows that are entirely empty
+      const dataRows = allRows.slice(DATA_ROW_START - 1).filter(row =>
+        row.some(cell => cell !== null && cell !== undefined && String(cell).trim() !== '')
+      );
+
+      if (!dataRows.length) {
+        hideLoading();
+        alert(`ไม่พบข้อมูลใน sheet "${TARGET_SHEET}" (ตั้งแต่แถวที่ ${DATA_ROW_START})`);
+        return;
+      }
+
+      // Build array of objects using detected headers
+      const json = dataRows.map(row => {
+        const obj = {};
+        headers.forEach((h, i) => { obj[h] = row[i] ?? ''; });
+        return obj;
+      });
+
       state.rawData  = json;
-      state.columns  = Object.keys(json[0]);
-      state.colMap   = detectColumns(state.columns);
+      state.columns  = headers;
+      state.colMap   = detectColumns(headers);
       state.page     = 1;
 
       $('lastUpdated').textContent = `อัปเดต: ${new Date().toLocaleString('th-TH')}`;
