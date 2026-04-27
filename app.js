@@ -48,9 +48,8 @@ const fmt = (n) => {
 const fmtBudget = (n) => {
   const num = parseFloat(String(n).replace(/,/g, ''));
   if (isNaN(num)) return '–';
-  if (num >= 1e6)  return (num / 1e6).toFixed(2) + ' ล้าน';
-  if (num >= 1e3)  return (num / 1e3).toFixed(1) + ' พัน';
-  return num.toLocaleString('th-TH');
+  const mun = num / 10000;
+  return mun.toLocaleString('th-TH', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' หมื่น';
 };
 const showEl  = (id) => { const el = $(id); if (el) el.classList.remove('hidden'); };
 const hideEl  = (id) => { const el = $(id); if (el) el.classList.add('hidden'); };
@@ -68,15 +67,37 @@ function hideLoading() { hideEl('loadingOverlay'); }
 // ── Column detection ────────────────────────────────────────
 function detectColumns(headers) {
   const map = {};
-  for (const [sem, candidates] of Object.entries(SEMANTIC_KEYS)) {
+  const usedCols = new Set();
+  // Detect internal/external budget before total to avoid matching "งบประมาณ" to sub-columns
+  const priority = ['budgetInternal', 'budgetExternal'];
+  const rest = Object.keys(SEMANTIC_KEYS).filter(k => !priority.includes(k));
+  for (const sem of [...priority, ...rest]) {
+    const candidates = SEMANTIC_KEYS[sem];
     for (const h of headers) {
-      if (candidates.some(c => h.toLowerCase().includes(c.toLowerCase()))) {
+      if (!usedCols.has(h) && candidates.some(c => h.toLowerCase().includes(c.toLowerCase()))) {
         map[sem] = h;
+        usedCols.add(h);
         break;
       }
     }
   }
   return map;
+}
+
+// ── Expand merged cells in a sheet ──────────────────────────
+function expandMerges(ws, allRows) {
+  const merges = ws['!merges'] || [];
+  const expanded = allRows.map(row => [...row]);
+  merges.forEach(merge => {
+    const topVal = expanded[merge.s.r]?.[merge.s.c] ?? '';
+    for (let r = merge.s.r; r <= merge.e.r; r++) {
+      if (!expanded[r]) continue;
+      for (let c = merge.s.c; c <= merge.e.c; c++) {
+        expanded[r][c] = topVal;
+      }
+    }
+  });
+  return expanded;
 }
 
 // ── Excel / CSV loading ─────────────────────────────────────
@@ -107,17 +128,31 @@ function loadData(file) {
 
       // Read all rows as raw arrays (no header inference)
       const allRows = XLSX.utils.sheet_to_json(ws, { header: 1, defval: '' });
+      const expanded = expandMerges(ws, allRows);
 
-      // Row 3 (index 2) = headers; skip empty header cells
-      const rawHeaders = allRows[HEADER_ROW - 1] || [];
-      const headers = rawHeaders.map((h, i) =>
-        (h !== null && h !== undefined && String(h).trim() !== '')
-          ? String(h).trim()
-          : `คอลัมน์_${i + 1}`
-      );
+      // Row 3 (index 2) = main field headers (may have merged cells)
+      // Row 4 (index 3) = sub-field headers corresponding to row 3
+      const row3 = expanded[HEADER_ROW - 1] || [];
+      const row4 = expanded[HEADER_ROW]     || [];
+      const maxCols = Math.max(row3.length, row4.length);
+      const headers = [];
+      for (let i = 0; i < maxCols; i++) {
+        const h3 = String(row3[i] ?? '').trim();
+        const h4 = String(row4[i] ?? '').trim();
+        let colName;
+        if (h3 && h4 && h3 !== h4) {
+          colName = `${h3} ${h4}`;
+        } else if (h3) {
+          colName = h3;
+        } else if (h4) {
+          colName = h4;
+        } else {
+          colName = `คอลัมน์_${i + 1}`;
+        }
+        headers.push(colName);
+      }
 
-      // Rows from row 4 (index 3) onward = data
-      // Skip rows that are entirely empty
+      // Data starts at row 5 (index 4); skip entirely empty rows
       const dataRows = allRows.slice(DATA_ROW_START - 1).filter(row =>
         row.some(cell => cell !== null && cell !== undefined && String(cell).trim() !== '')
       );
@@ -377,7 +412,7 @@ function renderBudgetDoughnut(data, col) {
           callbacks: {
             label: (ctx) => {
               const pct = total > 0 ? ((ctx.parsed / total) * 100).toFixed(1) : 0;
-              return ` ${ctx.label}: ${ctx.parsed.toLocaleString('th-TH')} บาท (${pct}%)`;
+              return ` ${ctx.label}: ${fmtBudget(ctx.parsed)} (${pct}%)`;
             },
           },
           bodyFont: { family: 'Kanit' },
@@ -403,7 +438,7 @@ function renderBudgetHBar(data, col) {
     data: {
       labels,
       datasets: [{
-        label: 'งบประมาณ (บาท)',
+        label: 'งบประมาณ (หมื่นบาท)',
         data: values,
         backgroundColor: '#f59e0b99',
         borderColor: '#d97706',
@@ -412,8 +447,49 @@ function renderBudgetHBar(data, col) {
       }],
     },
     options: {
-      ...chartOptions('งบประมาณ (บาท)', true),
+      responsive: true,
+      maintainAspectRatio: false,
+      animation: { duration: 600, easing: 'easeOutQuart' },
       indexAxis: 'y',
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          callbacks: {
+            label: (ctx) => ` งบประมาณ: ${fmtBudget(ctx.parsed.x)}`,
+          },
+          bodyFont: { family: 'Kanit' },
+          titleFont: { family: 'Kanit' },
+        },
+      },
+      scales: {
+        x: {
+          beginAtZero: true,
+          ticks: {
+            font: { family: 'Kanit', size: 10 },
+            callback: (v) => {
+              const lbl = fmtBudget(v);
+              return lbl.length > 14 ? lbl.slice(0, 13) + '…' : lbl;
+            },
+          },
+          grid: { color: '#f3f4f6' },
+        },
+        y: {
+          title: {
+            display: true,
+            text: 'ชื่อหัวหน้าโครงการ',
+            font: { family: 'Kanit', size: 11 },
+            color: '#6b7280',
+          },
+          ticks: {
+            font: { family: 'Kanit', size: 10 },
+            callback: (v) => {
+              const lbl = String(v);
+              return lbl.length > 18 ? lbl.slice(0, 17) + '…' : lbl;
+            },
+          },
+          grid: { color: '#f3f4f6' },
+        },
+      },
     },
   });
 }
@@ -484,9 +560,10 @@ function renderTypeBar(data, col) {
       ],
     },
     options: {
-      ...chartOptions('งบประมาณ (บาท)', true),
+      responsive: true,
+      maintainAspectRatio: false,
+      animation: { duration: 600, easing: 'easeOutQuart' },
       plugins: {
-        ...chartOptions('งบประมาณ (บาท)', true).plugins,
         legend: {
           display: true,
           position: 'top',
@@ -494,10 +571,24 @@ function renderTypeBar(data, col) {
         },
         tooltip: {
           callbacks: {
-            label: (ctx) => ` ${ctx.dataset.label}: ${ctx.parsed.y.toLocaleString('th-TH')} บาท`,
+            label: (ctx) => ` ${ctx.dataset.label}: ${fmtBudget(ctx.parsed.y)}`,
           },
           bodyFont: { family: 'Kanit' },
           titleFont: { family: 'Kanit' },
+        },
+      },
+      scales: {
+        x: {
+          ticks: { font: { family: 'Kanit', size: 10 }, maxRotation: 35 },
+          grid: { color: '#f3f4f6' },
+        },
+        y: {
+          beginAtZero: true,
+          ticks: {
+            font: { family: 'Kanit', size: 10 },
+            callback: (v) => fmtBudget(v),
+          },
+          grid: { color: '#f3f4f6' },
         },
       },
     },
@@ -524,7 +615,7 @@ function chartOptions(yLabel, isMoney) {
         callbacks: {
           label: (ctx) => {
             const v = ctx.parsed.x !== undefined ? ctx.parsed.x : ctx.parsed.y;
-            return ` ${yLabel}: ${isMoney ? v.toLocaleString('th-TH') + ' บาท' : v}`;
+            return ` ${yLabel}: ${isMoney ? fmtBudget(v) : v}`;
           },
         },
         bodyFont: { family: 'Kanit' },
