@@ -19,13 +19,15 @@ const state = {
 
 // Semantic column mapping — tries to find these in the sheet
 const SEMANTIC_KEYS = {
-  projectName:  ['ชื่อโครงการ', 'ชื่อโครงการวิจัย', 'project name', 'โครงการ'],
-  dept:         ['หน่วยงาน', 'ภาควิชา', 'คณะ', 'สาขา', 'department', 'dept', 'faculty'],
-  researcher:   ['นักวิจัย', 'ผู้วิจัย', 'หัวหน้าโครงการ', 'researcher', 'pi'],
-  budget:       ['งบประมาณ', 'budget', 'เงินทุน', 'ทุนวิจัย', 'วงเงิน'],
-  type:         ['ประเภท', 'ประเภทวิจัย', 'type', 'ประเภทโครงการ'],
-  year:         ['ปี', 'ปีงบประมาณ', 'year'],
-  status:       ['สถานะ', 'status'],
+  projectName:     ['ชื่อโครงการ', 'ชื่อโครงการวิจัย', 'project name', 'โครงการ'],
+  dept:            ['หน่วยงาน', 'ภาควิชา', 'คณะ', 'สาขา', 'department', 'dept', 'faculty'],
+  researcher:      ['หัวหน้าโครงการ', 'ชื่อหัวหน้า', 'นักวิจัย', 'ผู้วิจัย', 'researcher', 'pi'],
+  budget:          ['งบประมาณรวม', 'รวมงบประมาณ', 'งบประมาณ', 'budget', 'เงินทุน', 'ทุนวิจัย', 'วงเงิน'],
+  budgetInternal:  ['งบประมาณภายใน', 'งบภายใน', 'เงินทุนภายใน', 'ภายใน'],
+  budgetExternal:  ['งบประมาณภายนอก', 'งบภายนอก', 'เงินทุนภายนอก', 'ภายนอก'],
+  type:            ['ประเภท', 'ประเภทวิจัย', 'type', 'ประเภทโครงการ'],
+  year:            ['ปี', 'ปีงบประมาณ', 'year'],
+  status:          ['สถานะ', 'status'],
 };
 
 // Color palette
@@ -78,10 +80,10 @@ function detectColumns(headers) {
 }
 
 // ── Excel / CSV loading ─────────────────────────────────────
-// Layout: row 1-2 = title/meta, row 3 = headers, row 4+ = data
-const TARGET_SHEET  = 'โครงการวิจัย';
-const HEADER_ROW    = 3;  // 1-based Excel row number for headers
-const DATA_ROW_START = 4; // 1-based Excel row number where data begins
+// Layout: row 1-2 = title/meta, row 3 = headers, row 4 = sub-header/empty, row 5+ = data
+const TARGET_SHEET   = 'โครงการวิจัย';
+const HEADER_ROW     = 3;  // 1-based Excel row for column headers
+const DATA_ROW_START = 5;  // 1-based Excel row where actual data begins
 
 function loadData(file) {
   showLoading('กำลังอ่านไฟล์ Excel...');
@@ -152,19 +154,34 @@ function loadData(file) {
 }
 
 // ── Process & render ────────────────────────────────────────
+function toNum(val) {
+  const n = parseFloat(String(val ?? '').replace(/,/g, '').trim());
+  return isNaN(n) ? 0 : n;
+}
+
 function processData() {
   showLoading('กำลังประมวลผลข้อมูล...');
   setTimeout(() => {
-    // Normalize budget column to number
-    const bc = state.colMap.budget;
-    if (bc) {
-      state.rawData.forEach(row => {
-        const raw = String(row[bc]).replace(/,/g, '').trim();
-        row['__budget_num'] = isNaN(parseFloat(raw)) ? 0 : parseFloat(raw);
-      });
-    } else {
-      state.rawData.forEach(r => r['__budget_num'] = 0);
-    }
+    const bc  = state.colMap.budget;
+    const bic = state.colMap.budgetInternal;
+    const bec = state.colMap.budgetExternal;
+
+    state.rawData.forEach(row => {
+      const internal = bic ? toNum(row[bic]) : 0;
+      const external = bec ? toNum(row[bec]) : 0;
+
+      // Total budget: prefer explicit total column, else sum internal+external
+      if (bc) {
+        row['__budget_num'] = toNum(row[bc]);
+      } else if (bic || bec) {
+        row['__budget_num'] = internal + external;
+      } else {
+        row['__budget_num'] = 0;
+      }
+
+      row['__budget_internal'] = internal;
+      row['__budget_external'] = external;
+    });
 
     populateFilters();
     applyFilters();
@@ -271,20 +288,15 @@ function groupBudgetBy(data, key) {
 
 // ── Render all charts ───────────────────────────────────────
 function renderCharts() {
-  const data    = state.filteredData;
-  const deptCol = state.colMap.dept;
-  const typeCol = state.colMap.type;
+  const data           = state.filteredData;
+  const deptCol        = state.colMap.dept;
+  const typeCol        = state.colMap.type;
+  const researcherCol  = state.colMap.researcher;
 
-  // 1. Bar: projects per dept
   renderDeptBar(data, deptCol);
-
-  // 2. Doughnut: budget distribution
   renderBudgetDoughnut(data, deptCol);
-
-  // 3. Horizontal bar: budget per dept
-  renderBudgetHBar(data, deptCol);
-
-  // 4. Bar: projects by type
+  // Y-axis = researcher name (ชื่อหัวหน้าโครงการ), fallback to dept
+  renderBudgetHBar(data, researcherCol || deptCol);
   renderTypeBar(data, typeCol);
 }
 
@@ -320,10 +332,11 @@ function renderBudgetDoughnut(data, col) {
   const ctx = $('budgetDoughnut').getContext('2d');
   if (!col || !data.length) { renderEmpty(ctx, 'budgetDoughnut'); return; }
 
-  const grouped = groupBudgetBy(data, col);
-  const sorted  = Object.entries(grouped).sort((a, b) => b[1] - a[1]).slice(0, 10);
-  const labels  = sorted.map(e => e[0]);
-  const values  = sorted.map(e => e[1]);
+  const grouped  = groupBudgetBy(data, col);
+  const sorted   = Object.entries(grouped).sort((a, b) => b[1] - a[1]).slice(0, 10);
+  const labels   = sorted.map(e => e[0]);
+  const values   = sorted.map(e => e[1]);
+  const total    = values.reduce((s, v) => s + v, 0);
 
   state.charts['budgetDoughnut'] = new Chart(ctx, {
     type: 'doughnut',
@@ -334,7 +347,7 @@ function renderBudgetDoughnut(data, col) {
         backgroundColor: labels.map((_, i) => PALETTE[i % PALETTE.length] + 'dd'),
         borderColor: '#ffffff',
         borderWidth: 2,
-        hoverOffset: 8,
+        hoverOffset: 10,
       }],
     },
     options: {
@@ -342,11 +355,33 @@ function renderBudgetDoughnut(data, col) {
       maintainAspectRatio: false,
       animation: { animateRotate: true, duration: 800 },
       plugins: {
-        legend: { position: 'right', labels: { font: { family: 'Kanit', size: 11 }, boxWidth: 12, padding: 10 } },
+        legend: {
+          position: 'right',
+          labels: { font: { family: 'Kanit', size: 11 }, boxWidth: 12, padding: 10,
+            generateLabels: (chart) => {
+              const ds = chart.data.datasets[0];
+              return chart.data.labels.map((lbl, i) => {
+                const pct = total > 0 ? ((ds.data[i] / total) * 100).toFixed(1) : 0;
+                const short = lbl.length > 16 ? lbl.slice(0, 15) + '…' : lbl;
+                return {
+                  text: `${short} (${pct}%)`,
+                  fillStyle: ds.backgroundColor[i],
+                  hidden: false,
+                  index: i,
+                };
+              });
+            },
+          },
+        },
         tooltip: {
           callbacks: {
-            label: (ctx) => ` ${ctx.label}: ${ctx.parsed.toLocaleString('th-TH')} บาท`,
+            label: (ctx) => {
+              const pct = total > 0 ? ((ctx.parsed / total) * 100).toFixed(1) : 0;
+              return ` ${ctx.label}: ${ctx.parsed.toLocaleString('th-TH')} บาท (${pct}%)`;
+            },
           },
+          bodyFont: { family: 'Kanit' },
+          titleFont: { family: 'Kanit' },
         },
       },
     },
@@ -388,25 +423,84 @@ function renderTypeBar(data, col) {
   const ctx = $('typeBarChart').getContext('2d');
   if (!col || !data.length) { renderEmpty(ctx, 'typeBarChart'); return; }
 
-  const grouped = groupBy(data, col);
-  const sorted  = Object.entries(grouped).sort((a, b) => b[1] - a[1]);
+  // Aggregate internal & external budget per type
+  const agg = {};
+  data.forEach(row => {
+    const t = row[col] || '(ไม่ระบุ)';
+    if (!agg[t]) agg[t] = { internal: 0, external: 0 };
+    agg[t].internal += row['__budget_internal'] || 0;
+    agg[t].external += row['__budget_external'] || 0;
+  });
+
+  const hasBudgetBreakdown = data.some(r => r['__budget_internal'] > 0 || r['__budget_external'] > 0);
+
+  if (!hasBudgetBreakdown) {
+    // Fallback: simple project-count bar when no internal/external columns found
+    const sorted = Object.entries(groupBy(data, col)).sort((a, b) => b[1] - a[1]);
+    state.charts['typeBarChart'] = new Chart(ctx, {
+      type: 'bar',
+      data: {
+        labels: sorted.map(e => e[0]),
+        datasets: [{
+          label: 'จำนวนโครงการ',
+          data: sorted.map(e => e[1]),
+          backgroundColor: sorted.map((_, i) => PALETTE[(i + 4) % PALETTE.length] + 'cc'),
+          borderColor:     sorted.map((_, i) => PALETTE[(i + 4) % PALETTE.length]),
+          borderWidth: 1.5, borderRadius: 6,
+        }],
+      },
+      options: chartOptions('จำนวนโครงการ', false),
+    });
+    return;
+  }
+
+  // Grouped bar: internal vs external budget per research type
+  const sorted  = Object.entries(agg).sort((a, b) => (b[1].internal + b[1].external) - (a[1].internal + a[1].external));
   const labels  = sorted.map(e => e[0]);
-  const values  = sorted.map(e => e[1]);
+  const inVals  = sorted.map(e => e[1].internal);
+  const exVals  = sorted.map(e => e[1].external);
 
   state.charts['typeBarChart'] = new Chart(ctx, {
     type: 'bar',
     data: {
       labels,
-      datasets: [{
-        label: 'จำนวนโครงการ',
-        data: values,
-        backgroundColor: labels.map((_, i) => PALETTE[(i + 4) % PALETTE.length] + 'cc'),
-        borderColor:     labels.map((_, i) => PALETTE[(i + 4) % PALETTE.length]),
-        borderWidth: 1.5,
-        borderRadius: 6,
-      }],
+      datasets: [
+        {
+          label: 'งบประมาณภายใน',
+          data: inVals,
+          backgroundColor: '#3b82f6cc',
+          borderColor: '#2563eb',
+          borderWidth: 1.5,
+          borderRadius: 4,
+        },
+        {
+          label: 'งบประมาณภายนอก',
+          data: exVals,
+          backgroundColor: '#f59e0bcc',
+          borderColor: '#d97706',
+          borderWidth: 1.5,
+          borderRadius: 4,
+        },
+      ],
     },
-    options: chartOptions('จำนวนโครงการ', false),
+    options: {
+      ...chartOptions('งบประมาณ (บาท)', true),
+      plugins: {
+        ...chartOptions('งบประมาณ (บาท)', true).plugins,
+        legend: {
+          display: true,
+          position: 'top',
+          labels: { font: { family: 'Kanit', size: 11 }, boxWidth: 14, padding: 12 },
+        },
+        tooltip: {
+          callbacks: {
+            label: (ctx) => ` ${ctx.dataset.label}: ${ctx.parsed.y.toLocaleString('th-TH')} บาท`,
+          },
+          bodyFont: { family: 'Kanit' },
+          titleFont: { family: 'Kanit' },
+        },
+      },
+    },
   });
 }
 
