@@ -1,0 +1,240 @@
+/* ============================================================
+   Research Dashboard - Custom Styles
+   Supplement to TailwindCSS
+   ============================================================ */
+
+/* ---------- Base ---------- */
+:root {
+  --gold-400: #fbbf24;
+  --gold-500: #f59e0b;
+  --gold-600: #d97706;
+  --cream:    #fdfaf4;
+}
+
+*, *::before, *::after { box-sizing: border-box; }
+
+body {
+  background-color: var(--cream);
+  font-family: 'Kanit', 'Sarabun', 'Inter', sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* ---------- Loading Spinner ---------- */
+.spinner {
+  width: 48px;
+  height: 48px;
+  border: 4px solid #fde68a;
+  border-top-color: var(--gold-500);
+  border-radius: 50%;
+  animation: spin 0.75s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* ---------- Section Title ---------- */
+.section-title {
+  font-size: 1.05rem;
+  font-weight: 600;
+  color: #374151;
+  margin-bottom: 0.75rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+.section-title::before {
+  content: '';
+  display: inline-block;
+  width: 4px;
+  height: 18px;
+  background: var(--gold-500);
+  border-radius: 2px;
+}
+
+/* ---------- Summary Cards ---------- */
+.summary-card {
+  background: #ffffff;
+  border-radius: 1rem;
+  padding: 1.25rem;
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  box-shadow: 0 1px 6px rgba(0,0,0,0.06);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  animation: fadeSlideUp 0.4s ease both;
+}
+.summary-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(0,0,0,0.09);
+}
+
+.card-icon {
+  width: 48px;
+  height: 48px;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.card-label {
+  font-size: 0.75rem;
+  color: #9ca3af;
+  font-weight: 500;
+  line-height: 1.2;
+}
+.card-value {
+  font-size: 1.65rem;
+  font-weight: 700;
+  color: #1f2937;
+  line-height: 1.1;
+  font-family: 'Inter', sans-serif;
+}
+.card-sub {
+  font-size: 0.7rem;
+  color: #d1d5db;
+}
+
+/* ---------- Chart Cards ---------- */
+.chart-card {
+  background: #ffffff;
+  border-radius: 1.25rem;
+  padding: 1.25rem 1.5rem;
+  box-shadow: 0 1px 6px rgba(0,0,0,0.06);
+  border: 1px solid #fef3c7;
+  animation: fadeSlideUp 0.45s ease both;
+}
+.chart-title {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: #374151;
+  margin-bottom: 1rem;
+  padding-bottom: 0.6rem;
+  border-bottom: 1px dashed #fde68a;
+}
+.chart-wrapper {
+  position: relative;
+  height: 280px;
+  width: 100%;
+}
+
+/* ---------- Filter Selects ---------- */
+.filter-select {
+  padding: 0.45rem 0.85rem;
+  border: 1px solid #e5e7eb;
+  border-radius: 0.5rem;
+  font-size: 0.85rem;
+  font-family: 'Kanit', sans-serif;
+  color: #374151;
+  background-color: #ffffff;
+  cursor: pointer;
+  transition: border-color 0.2s, box-shadow 0.2s;
+  outline: none;
+  min-width: 140px;
+}
+.filter-select:focus {
+  border-color: var(--gold-400);
+  box-shadow: 0 0 0 3px rgba(251, 191, 36, 0.15);
+}
+
+/* ---------- Table ---------- */
+#dataTable thead th {
+  padding: 0.75rem 1rem;
+  text-align: left;
+  font-size: 0.78rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: #6b7280;
+  white-space: nowrap;
+  cursor: pointer;
+  user-select: none;
+  transition: background-color 0.15s;
+}
+#dataTable thead th:hover { background-color: #fef9ec; }
+#dataTable thead th .sort-icon {
+  display: inline-block;
+  margin-left: 4px;
+  opacity: 0.35;
+  transition: opacity 0.15s, transform 0.2s;
+}
+#dataTable thead th.sort-asc .sort-icon,
+#dataTable thead th.sort-desc .sort-icon { opacity: 1; }
+#dataTable thead th.sort-desc .sort-icon { transform: rotate(180deg); }
+
+#dataTable tbody tr {
+  transition: background-color 0.15s;
+  animation: fadeIn 0.2s ease both;
+}
+#dataTable tbody tr:hover { background-color: #fffbeb; }
+#dataTable tbody td {
+  padding: 0.65rem 1rem;
+  font-size: 0.82rem;
+  color: #374151;
+  vertical-align: middle;
+  max-width: 220px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Zebra stripes */
+#dataTable tbody tr:nth-child(even) { background-color: #fafaf7; }
+#dataTable tbody tr:nth-child(even):hover { background-color: #fffbeb; }
+
+/* ---------- Pagination ---------- */
+.page-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 32px;
+  height: 32px;
+  padding: 0 6px;
+  border-radius: 6px;
+  font-size: 0.8rem;
+  font-family: 'Inter', sans-serif;
+  border: 1px solid #e5e7eb;
+  background: #fff;
+  color: #374151;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.page-btn:hover { border-color: var(--gold-400); color: var(--gold-600); background: #fffbeb; }
+.page-btn.active { background: var(--gold-500); border-color: var(--gold-500); color: #fff; font-weight: 600; }
+.page-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+/* ---------- Animations ---------- */
+@keyframes fadeSlideUp {
+  from { opacity: 0; transform: translateY(16px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+/* ---------- Number badge in table ---------- */
+.budget-badge {
+  display: inline-block;
+  background: #f0fdf4;
+  color: #059669;
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  font-family: 'Inter', sans-serif;
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+/* ---------- Empty state ---------- */
+.empty-row td {
+  text-align: center;
+  padding: 3rem 1rem;
+  color: #9ca3af;
+  font-size: 0.9rem;
+}
+
+/* ---------- Responsive tweaks ---------- */
+@media (max-width: 640px) {
+  .card-value { font-size: 1.3rem; }
+  .chart-wrapper { height: 220px; }
+}
