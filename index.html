@@ -3,39 +3,22 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Research Project Dashboard | ระบบติดตามโครงการวิจัย</title>
+  <title>Research Dashboard | ระบบติดตามโครงการวิจัย</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;500;600;700&family=Sarabun:wght@300;400;500;600&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
-  <!-- SheetJS for Excel parsing -->
+  <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;500;600;700&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
   <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
-  <!-- Chart.js -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
-  <!-- TailwindCSS CDN -->
   <script src="https://cdn.tailwindcss.com"></script>
   <script>
     tailwind.config = {
       theme: {
         extend: {
           colors: {
-            gold: {
-              50:  '#fffbeb',
-              100: '#fef3c7',
-              200: '#fde68a',
-              300: '#fcd34d',
-              400: '#fbbf24',
-              500: '#f59e0b',
-              600: '#d97706',
-              700: '#b45309',
-              800: '#92400e',
-              900: '#78350f',
-            },
+            gold: { 50:'#fffbeb',100:'#fef3c7',200:'#fde68a',300:'#fcd34d',400:'#fbbf24',500:'#f59e0b',600:'#d97706',700:'#b45309' },
             cream: '#fdfaf4',
           },
-          fontFamily: {
-            thai: ['Kanit', 'Sarabun', 'sans-serif'],
-            en:   ['Inter', 'sans-serif'],
-          },
+          fontFamily: { thai:['Kanit','sans-serif'], en:['Inter','sans-serif'] },
         },
       },
     };
@@ -44,231 +27,233 @@
 </head>
 <body class="bg-cream font-thai text-gray-800 min-h-screen">
 
-  <!-- ===== LOADING OVERLAY ===== -->
-  <div id="loadingOverlay" class="fixed inset-0 z-50 flex flex-col items-center justify-center bg-white bg-opacity-90 backdrop-blur-sm">
-    <div class="spinner mb-4"></div>
+  <!-- ═══ LOADING OVERLAY ═══ -->
+  <div id="loadingOverlay" class="fixed inset-0 z-50 flex flex-col items-center justify-center bg-white/95 backdrop-blur-sm">
+    <div class="loader-ring mb-5"></div>
     <p class="text-gold-600 font-semibold text-lg tracking-wide">กำลังโหลดข้อมูล...</p>
     <p id="loadingMsg" class="text-gray-400 text-sm mt-1">กรุณารอสักครู่</p>
+    <div class="mt-4 w-64 h-1.5 bg-gold-100 rounded-full overflow-hidden">
+      <div class="loader-bar"></div>
+    </div>
   </div>
 
-  <!-- ===== HEADER ===== -->
-  <header class="sticky top-0 z-40 bg-white shadow-md border-b-4 border-gold-400">
+  <!-- ═══ HEADER ═══ -->
+  <header class="sticky top-0 z-40 bg-white/95 backdrop-blur-sm shadow-md border-b-4 border-gold-400">
     <div class="max-w-screen-2xl mx-auto px-4 sm:px-6 lg:px-8 py-3 flex flex-col sm:flex-row items-center justify-between gap-3">
       <div class="flex items-center gap-3">
-        <div class="w-10 h-10 bg-gradient-to-br from-gold-400 to-gold-600 rounded-full flex items-center justify-center shadow-lg">
-          <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <div class="w-11 h-11 bg-gradient-to-br from-gold-400 to-gold-600 rounded-xl flex items-center justify-center shadow-lg flex-shrink-0">
+          <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
               d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/>
           </svg>
         </div>
         <div>
           <h1 class="text-lg sm:text-xl font-bold text-gray-800 leading-tight">ระบบติดตามโครงการวิจัย</h1>
-          <p class="text-xs text-gold-600 font-medium">Research Project Dashboard</p>
+          <p class="text-xs text-gold-600 font-medium tracking-wide">Research Dashboard &nbsp;•&nbsp; Sheet: <span class="font-bold">โครงการวิจัย</span></p>
         </div>
       </div>
-
       <div class="flex flex-wrap items-center gap-2">
-        <!-- Upload button -->
-        <label for="fileInput"
-          class="cursor-pointer inline-flex items-center gap-2 px-4 py-2 bg-gold-500 hover:bg-gold-600 text-white text-sm font-medium rounded-lg shadow transition-all duration-200 hover:shadow-md active:scale-95">
+        <label for="fileInput" class="btn-primary cursor-pointer">
           <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-              d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/>
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/>
           </svg>
           อัปโหลด Excel
         </label>
         <input id="fileInput" type="file" accept=".xlsx,.xls,.csv" class="hidden" />
-
-        <!-- Export CSV button -->
-        <button id="exportBtn"
-          class="inline-flex items-center gap-2 px-4 py-2 bg-white border border-gold-300 text-gold-700 text-sm font-medium rounded-lg shadow-sm hover:bg-gold-50 transition-all duration-200 active:scale-95">
+        <button id="exportBtn" class="btn-outline">
           <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
               d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
           </svg>
           ส่งออก CSV
         </button>
-
-        <!-- Last updated badge -->
-        <span id="lastUpdated" class="text-xs text-gray-400 hidden">อัปเดต: –</span>
+        <span id="lastUpdated" class="text-xs text-gray-400 hidden"></span>
       </div>
     </div>
   </header>
 
-  <!-- ===== MAIN CONTENT ===== -->
+  <!-- ═══ MAIN ═══ -->
   <main class="max-w-screen-2xl mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6">
 
-    <!-- ===== UPLOAD PROMPT (shown when no data) ===== -->
-    <div id="uploadPrompt" class="flex flex-col items-center justify-center py-24 text-center hidden">
-      <div class="w-24 h-24 bg-gold-100 rounded-full flex items-center justify-center mb-6 shadow-inner">
-        <svg class="w-12 h-12 text-gold-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
-            d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
-        </svg>
+    <!-- ── UPLOAD PROMPT ── -->
+    <div id="uploadPrompt" class="hidden">
+      <div id="dropZone"
+        class="drop-zone flex flex-col items-center justify-center py-20 text-center rounded-3xl border-2 border-dashed border-gold-300 bg-gold-50/40 cursor-pointer transition-all duration-200">
+        <div class="w-24 h-24 bg-gradient-to-br from-gold-100 to-gold-200 rounded-2xl flex items-center justify-center mb-6 shadow-md">
+          <svg class="w-12 h-12 text-gold-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
+              d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"/>
+          </svg>
+        </div>
+        <h2 class="text-2xl font-bold text-gray-700 mb-2">ลากวางหรืออัปโหลดไฟล์ Excel</h2>
+        <p class="text-gray-400 mb-1">รองรับ <span class="font-semibold text-gold-600">.xlsx, .xls</span></p>
+        <p class="text-gray-400 mb-8 text-sm">ระบบจะอ่าน sheet <span class="font-bold text-gold-600">"โครงการวิจัย"</span> โดยอัตโนมัติ (หัวข้อแถว 3+4 ข้อมูลแถว 5+)</p>
+        <label for="fileInput" class="btn-primary btn-lg cursor-pointer">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/>
+          </svg>
+          เลือกไฟล์ Excel
+        </label>
       </div>
-      <h2 class="text-2xl font-bold text-gray-700 mb-2">อัปโหลดไฟล์ Excel เพื่อเริ่มต้น</h2>
-      <p class="text-gray-400 mb-6 max-w-sm">รองรับไฟล์ .xlsx, .xls — ระบบจะอ่าน sheet "โครงการวิจัย" โดยอัตโนมัติ</p>
-      <label for="fileInput"
-        class="cursor-pointer inline-flex items-center gap-2 px-6 py-3 bg-gold-500 hover:bg-gold-600 text-white font-medium rounded-xl shadow-lg transition-all duration-200 hover:shadow-xl active:scale-95">
-        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-            d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/>
-        </svg>
-        เลือกไฟล์ Excel
-      </label>
     </div>
 
-    <!-- ===== DASHBOARD (shown when data loaded) ===== -->
+    <!-- ── DASHBOARD ── -->
     <div id="dashboard" class="hidden space-y-6">
 
       <!-- 1. SUMMARY CARDS -->
       <section>
-        <h2 class="section-title">ภาพรวม</h2>
+        <h2 class="section-title">ภาพรวมโครงการวิจัย</h2>
         <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
-          <div class="summary-card border-l-4 border-gold-400">
-            <div class="card-icon bg-gold-100 text-gold-600">
-              <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+
+          <div class="stat-card" style="--accent:#f59e0b;--accent-light:#fef3c7;--accent-dark:#d97706;animation-delay:0ms">
+            <div class="stat-icon" style="background:linear-gradient(135deg,#fbbf24,#f59e0b)">
+              <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                  d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/>
+                  d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"/>
               </svg>
             </div>
-            <div>
-              <p class="card-label">โครงการวิจัยทั้งหมด</p>
-              <p class="card-value" id="totalProjects">–</p>
-              <p class="card-sub">โครงการ</p>
+            <div class="stat-body">
+              <p class="stat-label">โครงการวิจัยทั้งหมด</p>
+              <p class="stat-value" id="totalProjects" style="color:#d97706">–</p>
+              <p class="stat-unit">โครงการ</p>
             </div>
           </div>
 
-          <div class="summary-card border-l-4 border-emerald-400">
-            <div class="card-icon bg-emerald-100 text-emerald-600">
-              <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <div class="stat-card" style="--accent:#10b981;--accent-light:#d1fae5;--accent-dark:#059669;animation-delay:80ms">
+            <div class="stat-icon" style="background:linear-gradient(135deg,#34d399,#10b981)">
+              <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                   d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
               </svg>
             </div>
-            <div>
-              <p class="card-label">งบประมาณรวม</p>
-              <p class="card-value text-emerald-600" id="totalBudget">–</p>
-              <p class="card-sub">หมื่นบาท</p>
+            <div class="stat-body">
+              <p class="stat-label">งบประมาณรวม</p>
+              <p class="stat-value" id="totalBudget" style="color:#059669">–</p>
+              <p class="stat-unit">หมื่นบาท</p>
             </div>
           </div>
 
-          <div class="summary-card border-l-4 border-blue-400">
-            <div class="card-icon bg-blue-100 text-blue-600">
-              <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <div class="stat-card" style="--accent:#3b82f6;--accent-light:#dbeafe;--accent-dark:#2563eb;animation-delay:160ms">
+            <div class="stat-icon" style="background:linear-gradient(135deg,#60a5fa,#3b82f6)">
+              <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                   d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"/>
               </svg>
             </div>
-            <div>
-              <p class="card-label">หน่วยงานที่เกี่ยวข้อง</p>
-              <p class="card-value text-blue-600" id="totalDepts">–</p>
-              <p class="card-sub">หน่วยงาน</p>
+            <div class="stat-body">
+              <p class="stat-label">หน่วยงานที่เกี่ยวข้อง</p>
+              <p class="stat-value" id="totalDepts" style="color:#2563eb">–</p>
+              <p class="stat-unit">หน่วยงาน</p>
             </div>
           </div>
 
-          <div class="summary-card border-l-4 border-purple-400">
-            <div class="card-icon bg-purple-100 text-purple-600">
-              <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <div class="stat-card" style="--accent:#8b5cf6;--accent-light:#ede9fe;--accent-dark:#7c3aed;animation-delay:240ms">
+            <div class="stat-icon" style="background:linear-gradient(135deg,#a78bfa,#8b5cf6)">
+              <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                  d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"/>
+                  d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z"/>
               </svg>
             </div>
-            <div>
-              <p class="card-label">นักวิจัย</p>
-              <p class="card-value text-purple-600" id="totalResearchers">–</p>
-              <p class="card-sub">คน</p>
+            <div class="stat-body">
+              <p class="stat-label">นักวิจัย / หัวหน้าโครงการ</p>
+              <p class="stat-value" id="totalResearchers" style="color:#7c3aed">–</p>
+              <p class="stat-unit">คน</p>
             </div>
           </div>
+
         </div>
       </section>
 
-      <!-- 2. FILTER SECTION -->
+      <!-- 2. FILTERS -->
       <section class="bg-white rounded-2xl shadow-sm border border-gold-100 p-4 sm:p-5">
         <div class="flex flex-wrap items-center gap-3">
-          <!-- Search -->
           <div class="relative flex-1 min-w-[200px]">
-            <svg class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
+            <svg class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none"
+              fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
             </svg>
-            <input id="searchInput" type="text" placeholder="ค้นหาโครงการ..."
-              class="w-full pl-9 pr-4 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-gold-400 focus:ring-2 focus:ring-gold-100 transition-all" />
+            <input id="searchInput" type="text"
+              placeholder="ค้นหาโครงการ, หัวหน้าโครงการ, หน่วยงาน..."
+              class="w-full pl-9 pr-4 py-2 border border-gray-200 rounded-lg text-sm
+                focus:outline-none focus:border-gold-400 focus:ring-2 focus:ring-gold-100 transition-all" />
           </div>
-
-          <!-- Department filter -->
-          <select id="deptFilter" class="filter-select">
-            <option value="">ทุกหน่วยงาน</option>
-          </select>
-
-          <!-- Type filter -->
-          <select id="typeFilter" class="filter-select">
-            <option value="">ทุกประเภทวิจัย</option>
-          </select>
-
-          <!-- Budget range filter -->
+          <select id="deptFilter"   class="filter-select"><option value="">ทุกหน่วยงาน</option></select>
+          <select id="typeFilter"   class="filter-select"><option value="">ทุกประเภทวิจัย</option></select>
           <select id="budgetFilter" class="filter-select">
             <option value="">ทุกช่วงงบประมาณ</option>
-            <option value="0-100000">น้อยกว่า 100,000</option>
+            <option value="0-100000">ต่ำกว่า 100,000</option>
             <option value="100000-500000">100,000 – 500,000</option>
             <option value="500000-1000000">500,000 – 1,000,000</option>
-            <option value="1000000-99999999">มากกว่า 1,000,000</option>
+            <option value="1000000-5000000">1,000,000 – 5,000,000</option>
+            <option value="5000000-999999999">มากกว่า 5,000,000</option>
           </select>
-
-          <!-- Reset -->
-          <button id="resetFilters"
-            class="inline-flex items-center gap-1 px-3 py-2 text-sm text-gray-500 hover:text-gold-600 border border-gray-200 rounded-lg hover:border-gold-300 transition-all">
+          <button id="resetFilters" class="btn-ghost">
             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
             </svg>
             รีเซต
           </button>
-
-          <!-- Results count -->
-          <span id="resultsCount" class="text-sm text-gray-400 ml-auto whitespace-nowrap"></span>
+          <span id="resultsCount" class="text-sm text-gray-400 ml-auto whitespace-nowrap font-medium"></span>
         </div>
       </section>
 
-      <!-- 3. CHARTS SECTION -->
+      <!-- 3. CHARTS -->
       <section>
         <h2 class="section-title">การวิเคราะห์ข้อมูล</h2>
         <div class="grid grid-cols-1 lg:grid-cols-2 gap-5">
 
-          <!-- Bar: projects per dept -->
           <div class="chart-card">
-            <h3 class="chart-title">จำนวนโครงการตามหน่วยงาน</h3>
-            <div class="chart-wrapper">
-              <canvas id="deptBarChart"></canvas>
+            <div class="chart-card-header" style="--hc:#dbeafe;--hct:#1d4ed8">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                  d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"/>
+              </svg>
+              <h3>จำนวนโครงการตามหน่วยงาน</h3>
             </div>
+            <div class="chart-wrapper"><canvas id="deptBarChart"></canvas></div>
           </div>
 
-          <!-- Doughnut: budget distribution -->
           <div class="chart-card">
-            <h3 class="chart-title">การกระจายงบประมาณ</h3>
-            <div class="chart-wrapper">
-              <canvas id="budgetDoughnut"></canvas>
+            <div class="chart-card-header" style="--hc:#fef3c7;--hct:#92400e">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                  d="M11 3.055A9.001 9.001 0 1020.945 13H11V3.055z"/>
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                  d="M20.488 9H15V3.512A9.025 9.025 0 0120.488 9z"/>
+              </svg>
+              <h3>การกระจายงบประมาณ (สัดส่วน %)</h3>
             </div>
+            <div class="chart-wrapper"><canvas id="budgetDoughnut"></canvas></div>
           </div>
 
-          <!-- Horizontal bar: top researchers/units -->
           <div class="chart-card">
-            <h3 class="chart-title">งบประมาณตามหัวหน้าโครงการ (หมื่นบาท)</h3>
-            <div class="chart-wrapper">
-              <canvas id="budgetHBar"></canvas>
+            <div class="chart-card-header" style="--hc:#fde68a;--hct:#92400e">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                  d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/>
+              </svg>
+              <h3>งบประมาณตามหัวหน้าโครงการ (หมื่นบาท)</h3>
             </div>
+            <div class="chart-wrapper"><canvas id="budgetHBar"></canvas></div>
           </div>
 
-          <!-- Grouped bar: internal vs external budget by type -->
           <div class="chart-card">
-            <h3 class="chart-title">เปรียบเทียบงบภายใน/ภายนอก ตามประเภทวิจัย</h3>
-            <div class="chart-wrapper">
-              <canvas id="typeBarChart"></canvas>
+            <div class="chart-card-header" style="--hc:#ede9fe;--hct:#5b21b6">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                  d="M7 12l3-3 3 3 4-4M8 21l4-4 4 4M3 4h18M4 4h16v12a1 1 0 01-1 1H5a1 1 0 01-1-1V4z"/>
+              </svg>
+              <h3>เปรียบเทียบงบภายใน / ภายนอก ตามประเภทวิจัย</h3>
             </div>
+            <div class="chart-wrapper"><canvas id="typeBarChart"></canvas></div>
           </div>
 
         </div>
       </section>
 
-      <!-- 4. DATA TABLE SECTION -->
+      <!-- 4. TABLE -->
       <section>
         <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 mb-3">
           <h2 class="section-title mb-0">ตารางข้อมูลโครงการวิจัย</h2>
@@ -280,20 +265,17 @@
               <option value="50">50</option>
               <option value="100">100</option>
             </select>
-            <label class="text-sm text-gray-500">รายการ</label>
+            <label class="text-sm text-gray-500">รายการ/หน้า</label>
           </div>
         </div>
-
         <div class="bg-white rounded-2xl shadow-sm border border-gold-100 overflow-hidden">
           <div class="overflow-x-auto">
             <table class="w-full text-sm" id="dataTable">
-              <thead id="tableHead" class="bg-gradient-to-r from-gold-50 to-gold-100 text-gray-700 sticky top-0 z-10"></thead>
+              <thead id="tableHead" class="sticky top-0 z-10"></thead>
               <tbody id="tableBody" class="divide-y divide-gray-50"></tbody>
             </table>
           </div>
-
-          <!-- Pagination -->
-          <div class="flex flex-col sm:flex-row items-center justify-between gap-3 px-5 py-4 border-t border-gray-100 bg-gray-50">
+          <div class="flex flex-col sm:flex-row items-center justify-between gap-3 px-5 py-4 border-t border-gray-100 bg-gray-50/60">
             <p id="paginationInfo" class="text-sm text-gray-500"></p>
             <div id="paginationControls" class="flex items-center gap-1"></div>
           </div>
@@ -301,12 +283,10 @@
       </section>
 
     </div><!-- /#dashboard -->
-
   </main>
 
-  <!-- ===== FOOTER ===== -->
   <footer class="mt-10 py-5 border-t border-gold-100 text-center text-xs text-gray-400">
-    <p>Research Project Dashboard &nbsp;|&nbsp; Powered by SheetJS &amp; Chart.js &nbsp;|&nbsp; <span id="footerYear"></span></p>
+    <p>Research Project Dashboard &nbsp;•&nbsp; SheetJS + Chart.js + TailwindCSS &nbsp;•&nbsp; <span id="footerYear"></span></p>
   </footer>
 
   <script src="app.js"></script>
